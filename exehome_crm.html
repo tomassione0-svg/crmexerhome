@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>ExeHome</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="ExeHome">
+<meta name="application-name" content="ExeHome">
+<meta name="theme-color" content="#6D28D9">
+<link rel="apple-touch-icon" href="icon-exehome.png">
+<link rel="icon" type="image/png" href="icon-exehome.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --violet:       #6D28D9;
+  --violet-mid:   #7C3AED;
+  --violet-light: #F5F3FF;
+  --violet-badge: #EDE9FE;
+  --teal:        #0D9E8C;
+  --teal-light:  #E6F9F5;
+  --azul:        #185FA5;
+  --azul-light:  #EAF3FB;
+  --amber:       #c07a00;
+  --amber-light: #FFF3CD;
+  --rojo:        #991f1f;
+  --rojo-light:  #FDECEA;
+  --gris:        #f4f4f4;
+  --gris-borde:  #e0e0e0;
+  --texto:       #1a1a1a;
+  --muted:       #666;
+  --bg:          #f8f9fa;
+  --card-bg:     #ffffff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--texto);min-height:100vh;}
+
+/* ── LOGIN ─────────────────────────────────────────────── */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#4C1D95 0%,#6D28D9 50%,#5B21B6 100%);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;}
+#login-screen.hidden{display:none;}
+.login-card{background:rgba(255,255,255,.97);border-radius:20px;padding:36px 32px 32px;width:100%;max-width:360px;box-shadow:0 24px 64px rgba(0,0,0,.35);text-align:center;}
+.login-logo{font-size:42px;margin-bottom:8px;display:block;}
+.login-title{font-size:18px;font-weight:700;color:var(--violet);margin-bottom:4px;}
+.login-sub{font-size:12px;color:var(--muted);margin-bottom:28px;}
+.login-label{display:block;font-size:11px;font-weight:600;color:var(--muted);text-align:left;margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.login-pw-wrap{position:relative;margin-bottom:16px;}
+.login-input{width:100%;background:#fff;border:1.5px solid var(--gris-borde);border-radius:10px;padding:13px 46px 13px 16px;font-size:16px;font-family:inherit;color:var(--texto);letter-spacing:2px;transition:border-color .2s;outline:none;}
+.login-input::placeholder{color:#aaa;letter-spacing:1px;}
+.login-input:focus{border-color:var(--violet);}
+.login-input.error{border-color:var(--rojo);animation:shake .3s;}
+.login-eye{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;font-size:18px;padding:2px;line-height:1;transition:color .2s;}
+.login-eye:hover{color:var(--violet);}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+.login-btn{width:100%;background:var(--violet);color:#fff;border:none;border-radius:10px;padding:13px;font-size:15px;font-weight:600;cursor:pointer;transition:background .2s;}
+.login-btn:hover{background:var(--violet-mid);}
+.login-error{color:var(--rojo);font-size:12px;margin-top:10px;min-height:18px;}
+
+/* ── APP ───────────────────────────────────────────────── */
+#app{display:none;}
+#app.visible{display:block;}
+.header{background:var(--violet);color:#fff;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.header h1{font-size:16px;font-weight:700;line-height:1.3;}
+.header-sub{font-size:11px;color:#fff;opacity:.85;margin-top:2px;}
+.header-right{display:flex;flex-direction:row;align-items:center;gap:10px;flex-shrink:0;}
+.sync-badge{font-size:11px;background:rgba(255,255,255,.15);padding:5px 10px;border-radius:20px;white-space:nowrap;display:flex;align-items:center;gap:5px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;}
+.sync-dot.offline{background:#f87171;}
+.sync-dot.loading{background:#fbbf24;animation:pulse 1s infinite;}
+.salir-btn{font-size:11px;font-weight:600;background:transparent;border:1.5px solid rgba(239,68,68,.6);color:#fca5a5;border-radius:20px;padding:4px 10px;cursor:pointer;display:flex;align-items:center;gap:4px;white-space:nowrap;transition:background .15s,border-color .15s;}
+.salir-btn:hover{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.9);}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.main{max-width:700px;margin:0 auto;padding:16px 12px;width:100%;}
+.page{display:none;width:100%;}
+.page.active{display:block;}
+
+/* Clientes */
+.cliente-card{background:var(--card-bg);border:1px solid var(--gris-borde);border-radius:10px;padding:12px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;box-shadow:0 1px 4px rgba(0,0,0,.07);}
+.cliente-name{font-size:14px;font-weight:600;}
+.cliente-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+.cliente-status-pill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+.status-consulta{background:var(--azul-light);color:var(--azul);}
+.status-cotizando{background:var(--amber-light);color:var(--amber);}
+.status-enviado{background:var(--teal-light);color:var(--teal);}
+.status-cerrado{background:var(--violet-badge);color:var(--violet);}
+.status-perdido{background:var(--rojo-light);color:var(--rojo);}
+.status-calificado{background:var(--violet-badge);color:var(--violet);}
+.status-asesor{background:var(--amber-light);color:var(--amber);}
+.edit-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:2px 4px;}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:none;align-items:flex-end;justify-content:center;padding:0;}
+@media(min-width:600px){.modal-overlay{align-items:center;padding:16px;}}
+.modal-overlay.open{display:flex!important;}
+.modal{background:#fff;border-radius:16px 16px 0 0;padding:20px 18px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;box-shadow:0 -4px 32px rgba(0,0,0,.18);}
+@media(min-width:600px){.modal{border-radius:14px;}}
+.modal h2{font-size:16px;font-weight:600;margin-bottom:14px;}
+.modal label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.04em;}
+.modal input,.modal select,.modal textarea{width:100%;border:1px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;margin-bottom:10px;font-family:inherit;}
+.modal textarea{height:64px;resize:vertical;}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;padding-top:6px;}
+.btn{padding:9px 16px;border-radius:7px;font-size:14px;font-weight:500;cursor:pointer;border:none;}
+.btn-primary{background:var(--violet);color:#fff;}
+.btn-secondary{background:var(--gris);color:var(--texto);}
+.btn-delete{background:var(--rojo-light);color:var(--rojo);}
+
+/* Attachments */
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-top:8px;}
+.attach-item{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--gris);border-radius:7px;text-decoration:none;color:var(--texto);}
+.attach-item:hover{background:var(--violet-light);}
+.attach-icon{font-size:16px;flex-shrink:0;}
+.attach-label{font-size:12px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.attach-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0;}
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;}
+.photo-thumb{width:100%;aspect-ratio:1;object-fit:cover;border-radius:7px;border:1px solid var(--gris-borde);cursor:pointer;}
+.photo-thumb:hover{opacity:.85;}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+
+/* Logout */
+.logout-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:none;align-items:center;justify-content:center;padding:24px;}
+.logout-overlay.open{display:flex;}
+.logout-card{background:#fff;border-radius:18px;padding:32px 28px 24px;width:100%;max-width:320px;text-align:center;box-shadow:0 16px 48px rgba(0,0,0,.2);}
+.logout-icon{font-size:38px;margin-bottom:12px;display:block;}
+.logout-title{font-size:18px;font-weight:700;color:var(--texto);margin-bottom:8px;}
+.logout-sub{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:24px;}
+.logout-btns{display:flex;gap:10px;}
+.logout-no{flex:1;padding:12px;border-radius:10px;border:1.5px solid var(--gris-borde);background:#fff;color:var(--texto);font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;}
+.logout-no:hover{background:var(--gris);}
+.logout-si{flex:1;padding:12px;border-radius:10px;border:none;background:var(--violet);color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s;}
+.logout-si:hover{background:var(--violet-mid);}
+
+.empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:14px;}
+
+/* Voz */
+@keyframes voz-pulse{0%{box-shadow:0 0 0 0 rgba(109,40,217,.5);transform:scale(1)}50%{box-shadow:0 0 0 14px rgba(109,40,217,0);transform:scale(1.06)}100%{box-shadow:0 0 0 0 rgba(109,40,217,0);transform:scale(1)}}
+.voz-recording{animation:voz-pulse 1.2s infinite!important;background:#dc2626!important;}
+</style>
+</head>
+<body>
+
+<script>
+  const SUPA_URL='https://venvzyzbuduzbyqlrtcm.supabase.co';
+  const SUPA_KEY='sb_publishable_j-I3Ckl63BOTjUP9JmYyNA_-VYscbRU';
+</script>
+
+<!-- ══ LOGIN ══ -->
+<div id="login-screen">
+  <div class="login-card">
+    <span class="login-logo">🏠</span>
+    <div class="login-title">ExeHome</div>
+    <div class="login-sub">CRM inmobiliario</div>
+    <label class="login-label">Email</label>
+    <input type="email" id="login-email" class="login-input" style="margin-bottom:12px;letter-spacing:normal" placeholder="tu@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('login-input').focus()">
+    <label class="login-label">Contraseña</label>
+    <div class="login-pw-wrap">
+      <input type="password" id="login-input" class="login-input" placeholder="Contraseña" maxlength="20" autocomplete="current-password" onkeydown="if(event.key==='Enter')checkLogin()">
+      <button class="login-eye" type="button" onclick="togglePwVisibility()" id="eye-btn" title="Mostrar/ocultar">
+        <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <button class="login-btn" id="login-btn" onclick="checkLogin()">Ingresar →</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ══ APP ══ -->
+<div id="app">
+
+<div class="header">
+  <div>
+    <img src="exehome_logo_white_cropped.png" alt="ExeHome" style="height:16px;width:auto;object-fit:contain;display:block;">
+    <div class="header-sub">Desarrollos inmobiliarios</div>
+  </div>
+  <div class="header-right">
+    <div class="sync-badge"><div class="sync-dot loading" id="sync-dot"></div><span id="sync-label">Conectando...</span></div>
+    <button class="salir-btn" onclick="logout()">⊘ Salir</button>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- ═ CLIENTES ═ -->
+<div class="page active" id="page-clientes">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 8px">
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)">Pipeline de clientes</div>
+    <div style="display:flex;gap:6px">
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="botStatsOpen()">📊 Estadísticas</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px" onclick="botConfigOpen()">🤖 Config bot</button>
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 12px" onclick="openClienteModal()">＋ Nuevo</button>
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 10px" onclick="startVozCliente()" title="Agregar cliente por voz">🎤</button>
+    </div>
+  </div>
+  <div style="padding:2px 8px 8px;position:relative">
+    <input id="cliente-buscar" type="text" oninput="setCliBusqueda(this.value)" onfocus="renderCliSugerencias(this.value)" onblur="cliSugerenciasBlur()" placeholder="🔎 Buscar cliente por nombre o teléfono…" autocomplete="off" style="width:100%;padding:9px 34px 9px 12px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:13px;font-family:inherit">
+    <button type="button" id="cliente-buscar-clear" onclick="limpiarCliBusqueda()" title="Limpiar" style="display:none;position:absolute;right:16px;top:9px;background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);line-height:1;padding:4px">✕</button>
+    <div id="cliente-buscar-sugerencias" style="display:none;position:absolute;left:8px;right:8px;top:44px;z-index:60;background:var(--card-bg);border:1.5px solid var(--gris-borde);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);max-height:280px;overflow-y:auto"></div>
+  </div>
+  <div id="cliente-filtros" style="display:flex;gap:6px;flex-wrap:wrap;padding:2px 8px 10px"></div>
+  <div id="cliente-list" style="padding:0 8px"></div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ═ BOT CONFIG MODAL ═ -->
+<div class="modal-overlay" id="bot-config-modal">
+  <div class="modal" style="max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h2 style="margin:0">🤖 Configuración del bot</h2>
+      <button onclick="closeModal('bot-config-modal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1">×</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:2px 0 10px">Editá cómo conversa el bot. Los cambios se aplican al instante.</p>
+    <div style="background:var(--violet-light);border:1px solid var(--violet-badge);border-radius:8px;padding:9px 12px;font-size:12px;color:#3b1f6e;line-height:1.5;margin-bottom:14px">
+      ℹ️ El bot recibe automáticamente el <b>nombre, teléfono y tipo de operación</b> del formulario web y arranca desde ahí. Acá definís <b>el resto</b> de las preguntas y la info que usa para responder.
+    </div>
+    <label style="font-weight:600">📋 Instrucciones — cómo se comporta y qué pregunta</label>
+    <textarea id="bot-instrucciones" rows="7" placeholder="Ej: Sos el asistente de ExeHome. Español rioplatense, cálido y breve. Preguntá zona, tipo de propiedad, presupuesto y urgencia." style="width:100%;font-family:inherit;font-size:13px;padding:9px;border:1.5px solid var(--gris-borde);border-radius:8px;line-height:1.5;resize:vertical;margin-bottom:12px"></textarea>
+    <label style="font-weight:600">📚 Información / Conocimiento — propiedades, precios y FAQs</label>
+    <textarea id="bot-conocimiento" rows="9" placeholder="Ej:&#10;PROPIEDADES: casa 3 amb. Palermo, depto 2 amb. Belgrano...&#10;PRECIOS: alquiler 2 amb. desde USD 600...&#10;FAQs:&#10;- ¿Hacen tasaciones? R: Sí, gratis." style="width:100%;font-family:inherit;font-size:13px;padding:9px;border:1.5px solid var(--gris-borde);border-radius:8px;line-height:1.5;resize:vertical;margin-bottom:6px"></textarea>
+    <div id="bot-config-info" style="font-size:11px;color:var(--muted);margin-bottom:12px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-secondary" onclick="closeModal('bot-config-modal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="botConfigSave()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═ BOT STATS MODAL ═ -->
+<div class="modal-overlay" id="bot-stats-modal">
+  <div class="modal" style="max-width:640px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h2 style="margin:0">📊 Estadísticas</h2>
+      <button onclick="closeModal('bot-stats-modal')" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1">×</button>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);margin:2px 0 12px">Un vistazo rápido a tus leads y al bot.</p>
+    <div id="bot-stats-body"><div class="empty">Cargando...</div></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button class="btn btn-secondary" onclick="closeModal('bot-stats-modal')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═ WA CHAT MODAL ═ -->
+<div class="modal-overlay" id="wa-modal">
+  <div class="modal" style="max-width:520px;padding:0;overflow:hidden">
+    <div style="background:var(--violet);color:#fff;padding:13px 16px;display:flex;align-items:center;gap:11px">
+      <div id="wa-avatar" style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0">–</div>
+      <div style="flex:1;min-width:0">
+        <div id="wa-nombre" style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Cliente</div>
+        <div id="wa-tel" style="font-size:12px;opacity:.85">WhatsApp</div>
+      </div>
+      <button onclick="waClose()" style="background:none;border:none;color:rgba(255,255,255,.8);font-size:22px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="wa-resumen" style="background:var(--violet-light);border-bottom:1px solid var(--violet-badge);padding:9px 16px;font-size:12.5px;color:#3b1f6e;line-height:1.55"></div>
+    <div id="wa-demo-banner" style="display:none;background:#fff7e0;border-bottom:1px solid #f0d98a;padding:6px 16px;font-size:11.5px;color:#7a5800;text-align:center">Ejemplo — se llena solo cuando el bot esté activo</div>
+    <div id="wa-chat" style="height:320px;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;background:#f7f9f8"></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--gris-borde);background:#fff">
+      <span id="wa-estado" style="font-size:12.5px;font-weight:600">🤖 El bot está atendiendo</span>
+      <div style="margin-left:auto;display:inline-flex;border:1.5px solid var(--gris-borde);border-radius:9px;overflow:hidden">
+        <button id="wa-btn-bot" onclick="waSetModo(true)" style="border:none;background:var(--violet);color:#fff;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;font-family:inherit">Bot</button>
+        <button id="wa-btn-yo" onclick="waSetModo(false)" style="border:none;background:#fff;color:var(--muted);font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;font-family:inherit">La atiendo yo</button>
+      </div>
+    </div>
+    <div id="wa-reply" style="padding:11px 16px;border-top:1px solid var(--gris-borde);background:#fff"></div>
+  </div>
+</div>
+
+<!-- ═ MODAL CLIENTE ═ -->
+<div class="modal-overlay" id="modal-cliente">
+  <div class="modal">
+    <h2>Cliente potencial</h2>
+    <input type="hidden" id="cli-id"><input type="hidden" id="cli-fuente">
+    <label>Nombre completo</label><input type="text" id="cli-nombre" placeholder="Juan García">
+    <label>Teléfono / WhatsApp</label><input type="text" id="cli-tel" placeholder="+54 ...">
+    <label>Correo electrónico</label><input type="text" id="cli-email" placeholder="tucorreo@ejemplo.com">
+    <label>Provincia / Zona</label><input type="text" id="cli-provincia" placeholder="Buenos Aires">
+    <label>Dirección / Ubicación</label><input type="text" id="cli-direccion" placeholder="Barrio, calle, número">
+    <label>Tipo de operación</label>
+    <select id="cli-tipo">
+      <option value="">Seleccionar tipo</option>
+      <option value="Compra — Casa">Compra — Casa</option>
+      <option value="Compra — Departamento">Compra — Departamento</option>
+      <option value="Compra — Terreno">Compra — Terreno</option>
+      <option value="Compra — PH">Compra — PH</option>
+      <option value="Venta — Casa">Venta — Casa</option>
+      <option value="Venta — Departamento">Venta — Departamento</option>
+      <option value="Venta — Terreno">Venta — Terreno</option>
+      <option value="Venta — PH">Venta — PH</option>
+      <option value="Alquiler">Alquiler</option>
+      <option value="Alquiler temporario">Alquiler temporario</option>
+      <option value="Tasación">Tasación</option>
+      <option value="Otro">Otro</option>
+    </select>
+    <label>Estado</label>
+    <select id="cli-estado">
+      <option value="consulta">Consulta inicial</option><option value="cotizando">En cotización</option>
+      <option value="enviado">Presupuesto enviado</option><option value="cerrado">Cerrado ✅</option>
+      <option value="perdido">Perdido ❌</option>
+    </select>
+    <label>Mensaje / Sobre la operación</label><textarea id="cli-notas" placeholder="Presupuesto, ambientes, superficie, barrio preferido, etc."></textarea>
+    <label>🤖 Resumen del bot</label><textarea id="cli-resumen" placeholder="Se completa solo con lo que junta el bot."></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-delete" id="cli-btn-delete" style="display:none;margin-right:auto" onclick="deleteCliente()">Eliminar</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-cliente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveCliente()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═ MODAL ADJUNTOS ═ -->
+<div class="modal-overlay" id="modal-adjuntos">
+  <div class="modal">
+    <h2 id="adj-title">Archivos y Links</h2>
+    <input type="hidden" id="adj-prov-id">
+    <div style="background:var(--gris);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--muted)">AGREGAR NUEVO</div>
+      <label>Tipo</label>
+      <select id="adj-tipo" onchange="toggleAdjTipo()" style="margin-bottom:8px;width:100%;border:1px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:14px">
+        <option value="link">🔗 Link / URL</option>
+        <option value="foto">📷 Foto (subir desde dispositivo)</option>
+        <option value="foto_url">🖼 Foto (URL de imagen)</option>
+        <option value="doc">📄 Documento (URL)</option>
+      </select>
+      <label>Título</label><input type="text" id="adj-titulo" placeholder="Ej: Fotos del inmueble" style="width:100%;border:1px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:14px;margin-bottom:8px">
+      <div id="adj-upload-block" style="display:none">
+        <label>Seleccionar foto</label>
+        <input type="file" id="adj-file" accept="image/*" capture="environment" style="width:100%;border:1px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:14px;margin-bottom:8px;background:#fff">
+        <div id="adj-upload-preview" style="display:none;margin-bottom:8px"><img id="adj-preview-img" style="width:100%;max-height:200px;object-fit:contain;border-radius:7px;border:1px solid var(--gris-borde)"></div>
+        <div id="adj-upload-progress" style="display:none;font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center">Subiendo... ⏳</div>
+      </div>
+      <div id="adj-url-block">
+        <label id="adj-url-label">URL / Link</label>
+        <input type="url" id="adj-url" placeholder="https://..." style="width:100%;border:1px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:14px;margin-bottom:8px">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="saveAdjunto()">＋ Agregar</button>
+    </div>
+    <div id="adj-lista"></div>
+    <div class="modal-actions" style="margin-top:8px">
+      <button class="btn btn-secondary" onclick="closeModal('modal-adjuntos');renderClientes()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═ MODAL FOTO ═ -->
+<div class="modal-overlay" id="modal-foto">
+  <div class="modal" style="padding:8px;background:#000;border-radius:12px">
+    <img id="foto-img" src="" style="width:100%;border-radius:8px;max-height:80vh;object-fit:contain">
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal('modal-foto')">Cerrar</button>
+  </div>
+</div>
+
+<!-- ═ MODAL LOGOUT ═ -->
+<div class="logout-overlay" id="modal-logout">
+  <div class="logout-card">
+    <span class="logout-icon">🔒</span>
+    <div class="logout-title">¿Salir de la app?</div>
+    <div class="logout-sub">Se cerrará la sesión y tendrás que ingresar la contraseña de nuevo.</div>
+    <div class="logout-btns">
+      <button class="logout-no" onclick="document.getElementById('modal-logout').classList.remove('open')">No</button>
+      <button class="logout-si" onclick="confirmarLogout()">Sí, salir</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ═ MODAL VOZ ═ -->
+<div class="modal-overlay" id="modal-voz-cli" style="display:none">
+  <div class="modal" style="max-width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <h2 style="margin:0">🎤 Nuevo cliente por voz</h2>
+      <button onclick="clearVozCli();document.getElementById('modal-voz-cli').style.display='none'" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999;padding:0 0 0 12px">×</button>
+    </div>
+    <p style="color:#666;font-size:12px;margin-bottom:16px">Ej: <em>"Juan García, quiere comprar una casa en Palermo, está en consulta"</em></p>
+    <div style="text-align:center;margin-bottom:12px">
+      <button id="voz-cli-btn" onclick="toggleVozCli()" style="width:64px;height:64px;border-radius:50%;background:#6D28D9;border:none;cursor:pointer;font-size:28px;display:inline-flex;align-items:center;justify-content:center;transition:all .2s">🎤</button>
+    </div>
+    <div id="voz-cli-status" style="text-align:center;font-size:12px;color:#666;min-height:18px;margin-bottom:8px"></div>
+    <div id="voz-cli-transcript" style="display:none;background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;font-style:italic;color:#333">
+      <span style="font-size:10px;color:#999;display:block;margin-bottom:2px">LO QUE DICTASTE</span>
+      <span id="voz-cli-transcript-text"></span>
+    </div>
+    <div id="voz-cli-preview" style="display:none">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">NOMBRE / EMPRESA</label><input type="text" id="vc-nombre" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">TELÉFONO / EMAIL</label><input type="text" id="vc-contacto" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box"></div>
+        <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">TIPO DE OPERACIÓN</label>
+          <select id="vc-tipo" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box">
+            <option value="">Seleccionar...</option>
+            <option value="Compra — Casa">Compra — Casa</option><option value="Compra — Departamento">Compra — Departamento</option>
+            <option value="Compra — Terreno">Compra — Terreno</option><option value="Compra — PH">Compra — PH</option>
+            <option value="Venta — Casa">Venta — Casa</option><option value="Venta — Departamento">Venta — Departamento</option>
+            <option value="Venta — Terreno">Venta — Terreno</option><option value="Venta — PH">Venta — PH</option>
+            <option value="Alquiler">Alquiler</option><option value="Alquiler temporario">Alquiler temporario</option>
+            <option value="Tasación">Tasación</option><option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">ESTADO</label>
+          <select id="vc-estado" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box">
+            <option value="consulta">Consulta inicial</option><option value="cotizando">En cotización</option>
+            <option value="enviado">Ppto. enviado</option><option value="cerrado">Cerrado ✅</option><option value="perdido">Perdido ❌</option>
+          </select>
+        </div>
+        <div style="grid-column:1/-1"><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">NOTAS</label><textarea id="vc-notas" rows="2" style="width:100%;border:1px solid #ddd;border-radius:6px;padding:8px 10px;font-size:13px;box-sizing:border-box;resize:none"></textarea></div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:space-between">
+        <button onclick="clearVozCli();document.getElementById('modal-voz-cli').style.display='none'" style="background:none;border:1px solid #ddd;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px">Cancelar</button>
+        <button onclick="saveVozCli()" style="background:#6D28D9;color:#fff;border:none;border-radius:8px;padding:10px 24px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar cliente</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:8px"><button id="voz-cli-clear" onclick="clearVozCli()" style="display:none;font-size:11px;background:none;border:none;color:#999;cursor:pointer;text-decoration:underline">Limpiar y dictar de nuevo</button></div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════════
+   ExeHome CRM — JavaScript
+   ═══════════════════════════════════════════════════════════════════════════ */
+const{createClient}=supabase;
+const db=createClient(SUPA_URL,SUPA_KEY,{auth:{persistSession:false}});
+
+function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────
+function togglePwVisibility(){
+  const i=document.getElementById('login-input'),ic=document.getElementById('eye-icon');
+  if(i.type==='password'){i.type='text';ic.innerHTML='<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/>';}
+  else{i.type='password';ic.innerHTML='<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';}
+}
+function showApp(){document.getElementById('login-screen').classList.add('hidden');document.getElementById('app').classList.add('visible');init();}
+function showLogin(){document.getElementById('app').classList.remove('visible');document.getElementById('login-screen').classList.remove('hidden');document.getElementById('login-input').value='';document.getElementById('login-error').textContent='';}
+
+db.auth.onAuthStateChange((ev,sess)=>{if(sess)showApp();else showLogin();});
+
+async function checkLogin(){
+  const em=document.getElementById('login-email'),pw=document.getElementById('login-input'),email=em?em.value.trim():'',password=pw.value;
+  if(!password){pw.classList.add('error');document.getElementById('login-error').textContent='Ingresá la contraseña.';setTimeout(()=>pw.classList.remove('error'),500);return;}
+  document.getElementById('login-btn').textContent='Ingresando...';document.getElementById('login-btn').disabled=true;
+  const{error}=await db.auth.signInWithPassword({email,password});
+  document.getElementById('login-btn').textContent='Ingresar →';document.getElementById('login-btn').disabled=false;
+  if(error){pw.classList.add('error');document.getElementById('login-error').textContent='Credenciales incorrectas.';pw.value='';setTimeout(()=>{pw.classList.remove('error');pw.focus();},500);}
+}
+function logout(){document.getElementById('modal-logout').classList.add('open');}
+async function confirmarLogout(){document.getElementById('modal-logout').classList.remove('open');await db.auth.signOut();showLogin();}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────
+let clientes=[],adjuntos=[];
+function toast(msg,ms=2200){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),ms);}
+function setSyncState(s){const d=document.getElementById('sync-dot'),l=document.getElementById('sync-label');d.className='sync-dot'+(s==='ok'?'':s==='error'?' offline':' loading');l.textContent=s==='ok'?'Sincronizado':s==='error'?'Sin conexión':'Sincronizando...';}
+function closeModal(id){const o=document.getElementById(id);o.classList.remove('open');o.style.display='none';if(id==='wa-modal'&&typeof waCleanup==='function')waCleanup();}
+function openOverlay(id){const o=document.getElementById(id);o.style.display='flex';o.classList.add('open');}
+document.querySelectorAll('.modal-overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)closeModal(o.id);});});
+
+// ── ADJUNTOS ──────────────────────────────────────────────────────────────
+function _adjDeOwner(id){return adjuntos.filter(a=>a.cliente_id!=null&&String(a.cliente_id)===String(id));}
+function _adjCountCliente(id){return adjuntos.filter(a=>a.cliente_id!=null&&String(a.cliente_id)===String(id)).length;}
+function _adjClienteChips(id){
+  var arr=adjuntos.filter(a=>a.cliente_id!=null&&String(a.cliente_id)===String(id));
+  if(!arr.length)return '';
+  var chips=arr.map(a=>{var icon=a.tipo==='foto'||a.tipo==='foto_url'?'🖼':(a.tipo==='doc'?'📄':'🔗');return '<span style="font-size:10px;background:var(--gris);padding:2px 7px;border-radius:6px;white-space:nowrap;color:var(--muted)">'+icon+' '+escHtml(a.titulo||'Archivo')+'</span>';}).join(' ');
+  return '<div class="cliente-meta" style="margin-top:3px;display:flex;flex-wrap:wrap;gap:3px">'+chips+'</div>';
+}
+function openAdjuntosCliente(clienteId){
+  var c=clientes.find(x=>String(x.id)===String(clienteId));
+  document.getElementById('adj-title').textContent='📎 Archivos de '+(c?c.nombre:'cliente');
+  document.getElementById('adj-prov-id').value=clienteId;
+  renderAdjLista(clienteId);openOverlay('modal-adjuntos');
+}
+function toggleAdjTipo(){
+  var t=document.getElementById('adj-tipo').value;
+  document.getElementById('adj-upload-block').style.display=t==='foto'?'block':'none';
+  document.getElementById('adj-url-block').style.display=t==='foto'?'none':'block';
+  if(t==='foto'){document.getElementById('adj-file').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){document.getElementById('adj-preview-img').src=e.target.result;document.getElementById('adj-upload-preview').style.display='block';};r.readAsDataURL(f);};}
+}
+function renderAdjLista(provId){
+  var lista=document.getElementById('adj-lista'),items=_adjDeOwner(provId);
+  if(!items.length){lista.innerHTML='<div class="empty">Sin archivos todavía</div>';return;}
+  var fotos=items.filter(a=>(a.tipo==='foto'||a.tipo==='foto_url')&&a.url);
+  var links=items.filter(a=>a.tipo!=='foto'&&a.tipo!=='foto_url');
+  var html='';
+  if(fotos.length){html+='<div class="photo-grid">';fotos.forEach(a=>{html+='<img class="photo-thumb" src="'+escHtml(a.url)+'" onclick="verFoto(\''+escHtml(a.url)+'\')">';});html+='</div>';}
+  if(links.length){html+='<div class="attach-list">';links.forEach(a=>{var icon=a.tipo==='doc'?'📄':'🔗';html+='<div class="attach-item"><span class="attach-icon">'+icon+'</span><a href="'+escHtml(a.url)+'" target="_blank" class="attach-label">'+escHtml(a.titulo||a.url)+'</a><button class="attach-del" onclick="deleteAdj('+a.id+')">🗑</button></div>';});html+='</div>';}
+  lista.innerHTML=html;
+}
+async function saveAdjunto(){
+  var provId=document.getElementById('adj-prov-id').value,tipo=document.getElementById('adj-tipo').value,titulo=document.getElementById('adj-titulo').value.trim(),url='';
+  if(tipo==='foto'){
+    var fi=document.getElementById('adj-file'),file=fi.files&&fi.files[0];if(!file){toast('Seleccioná una foto');return;}
+    document.getElementById('adj-upload-progress').style.display='block';
+    var ext=file.name.split('.').pop()||'jpg',path='cliente_'+provId+'/'+Date.now()+'.'+ext;
+    var{error:upErr}=await db.storage.from('hes-archivos').upload(path,file,{contentType:file.type||'image/jpeg',upsert:false});
+    document.getElementById('adj-upload-progress').style.display='none';
+    if(upErr){toast('No se pudo subir la foto');return;}
+    url=db.storage.from('hes-archivos').getPublicUrl(path).data.publicUrl;if(!titulo)titulo=file.name;
+  }else{url=document.getElementById('adj-url').value.trim();if(!url){toast('Ingresá la URL');return;}}
+  var payload={titulo:titulo||url,tipo:tipo,url:url,cliente_id:parseInt(provId)};
+  var{error}=await db.from('exh_adjuntos').insert(payload);
+  if(error){toast('Error al guardar');return;}
+  await loadAdjuntos();renderAdjLista(provId);
+  document.getElementById('adj-titulo').value='';document.getElementById('adj-url').value='';
+  document.getElementById('adj-upload-preview').style.display='none';
+  var f2=document.getElementById('adj-file');if(f2)f2.value='';toast('Adjunto guardado ✓');
+}
+async function deleteAdj(id){if(!confirm('¿Eliminar este adjunto?'))return;await db.from('exh_adjuntos').delete().eq('id',id);await loadAdjuntos();var pv=document.getElementById('adj-prov-id').value;renderAdjLista(pv);renderClientes();toast('Eliminado');}
+function verFoto(url){document.getElementById('foto-img').src=url;openOverlay('modal-foto');}
+
+// ── NORMALIZACIÓN DE TIPO ────────────────────────────────────────────────
+function normalizarTipoCliente(tipo,notas=''){
+  const raw=(tipo||'').trim();
+  const t=(raw+' '+(notas||'')).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(t.includes('compra')&&t.includes('casa'))return 'Compra — Casa';
+  if(t.includes('compra')&&(t.includes('depto')||t.includes('departamento')))return 'Compra — Departamento';
+  if(t.includes('compra')&&t.includes('terreno'))return 'Compra — Terreno';
+  if(t.includes('compra')&&t.includes('ph'))return 'Compra — PH';
+  if(t.includes('venta')&&t.includes('casa'))return 'Venta — Casa';
+  if(t.includes('venta')&&(t.includes('depto')||t.includes('departamento')))return 'Venta — Departamento';
+  if(t.includes('venta')&&t.includes('terreno'))return 'Venta — Terreno';
+  if(t.includes('venta')&&t.includes('ph'))return 'Venta — PH';
+  if(t.includes('alquiler temporario')||t.includes('temporal'))return 'Alquiler temporario';
+  if(t.includes('alquiler')||t.includes('alquilar'))return 'Alquiler';
+  if(t.includes('tasacion')||t.includes('tasar'))return 'Tasación';
+  return raw;
+}
+function setSelectValuePreservingOption(sel,value,notas=''){
+  const n=normalizarTipoCliente(value,notas);if(!n){sel.value='';return;}
+  let o=Array.from(sel.options).find(x=>x.value===n||x.textContent.trim()===n);
+  if(!o){o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);}sel.value=o.value;
+}
+function tipoClienteDisplay(c){return normalizarTipoCliente(c.tipo,c.notas)||'Sin especificar';}
+
+function leadFuenteTag(c){
+  var f=c.fuente||c._fuente||'';
+  if(!f){var n=(c.notas||'').toLowerCase();if(n.includes('lead desde bot')||n.includes('bot whatsapp')||n.includes('bot instagram')||n.includes('comentario instagram')||n.includes('vino de instagram')||n.includes('vino de whatsapp')||n.includes('iniciaste vos por whatsapp'))f='bot';else if(n.includes('lead desde whatsapp')||n.includes('botón whatsapp')||n.includes('boton whatsapp'))f='whatsapp';else if(n.includes('lead desde mail')||n.includes('página web')||n.includes('pagina web')||n.includes('consulta recibida desde'))f='mail';}
+  var _sid=String(c.session_id||''),_nt=(c.notas||'').toLowerCase(),_cont=String(c.contacto||'');
+  var hasIG=_sid.indexOf('ig:')===0||_nt.includes('bot instagram')||_nt.includes('vino de instagram')||_cont.indexOf('@')===0;
+  var hasMail=f==='mail'||_nt.includes('lead desde mail')||_nt.includes('vino de mail')||_nt.includes('página web')||_nt.includes('pagina web')||_nt.includes('consulta recibida desde');
+  var hasWA=_sid.indexOf('wa:')===0||_nt.includes('bot whatsapp')||_nt.includes('por whatsapp')||_nt.includes('vino de whatsapp');
+  if(f==='whatsapp'&&!hasMail&&!hasIG)return '<span style="font-size:10px;background:#25d36620;color:#128c7e;padding:2px 8px;border-radius:8px;font-weight:600;white-space:nowrap">Lead WhatsApp</span>';
+  if(!hasIG&&!hasWA&&!hasMail&&f!=='bot')return '';
+  if(!hasIG&&!hasWA&&!hasMail)hasWA=true;
+  var svgIG='<svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px"><rect x="2" y="2" width="20" height="20" rx="6" fill="#E1306C"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="17.2" cy="6.8" r="1.3" fill="#fff"/></svg>';
+  var svgWA='<svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px"><path fill="#25D366" d="M12 2a10 10 0 0 0-8.5 15.3L2 22l4.8-1.5A10 10 0 1 0 12 2z"/><path fill="#fff" d="M8.5 7c-.3 0-.6.1-.8.4-.3.3-.9.9-.9 2.1s.9 2.4 1 2.6c.1.2 1.8 2.9 4.5 3.9 2.2.9 2.7.7 3.2.7.5-.1 1.6-.7 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3-.3-.2-1.6-.8-1.9-.9-.2-.1-.4-.1-.6.1-.2.3-.6.9-.8 1-.1.2-.3.2-.5.1-.3-.1-1.1-.4-2.1-1.3-.8-.7-1.3-1.5-1.4-1.8-.2-.3 0-.4.1-.5l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5 0-.1-.6-1.5-.8-2C9 7.1 8.8 7 8.6 7h-.1z"/></svg>';
+  var _pill=function(bg,col,txt){return '<span style="font-size:10px;background:'+bg+';color:'+col+';padding:2px 8px;border-radius:8px;font-weight:600;white-space:nowrap;display:inline-flex;align-items:center;gap:4px;margin:0 0 3px 3px">'+txt+'</span>';};
+  var _out='';
+  if(hasMail)_out+=_pill('#e8f0fe','#1a73e8','Lead Mail ✉️');
+  if(hasIG)_out+=_pill('#fce4f1','#c13584','Lead Bot '+svgIG);
+  if(hasWA)_out+=_pill('#25d36620','#128c7e','Lead Bot '+svgWA);
+  return _out;
+}
+
+function _normalizarLead(c){
+  var notas=c.notas||'',nl=notas.toLowerCase();
+  if(!c._fuente){if(nl.includes('lead desde bot')||nl.includes('bot whatsapp'))c._fuente='bot';else if(nl.includes('lead desde whatsapp'))c._fuente='whatsapp';else if(nl.includes('lead desde mail')||nl.includes('pagina web')||nl.includes('página web'))c._fuente='mail';}
+  if(!c.email){var em=(c.contacto||'').match(/[\w.+-]+@[\w-]+\.[\w.-]+/)||notas.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);if(em)c.email=em[0];}
+  var telRaw=String(c.telefono||c.contacto||''),tm=telRaw.match(/([+\d][\d\s().\-]{4,})/);if(tm)c.telefono=tm[1].trim();
+  if(!c.provincia){var pm=notas.match(/provincia[:\s]*([^.\n·|]+)/i);if(pm)c.provincia=pm[1].trim();}
+  var mm=notas.match(/mensaje[:\s]*([\s\S]+)$/i);
+  if(mm)c._mensaje=mm[1].trim();
+  else if(c._fuente){var clean=notas.replace(/^🤖\s*/,'').replace(/lead desde [^.]*\.?/i,'').replace(/provincia[:\s]*[^.\n·|]+[.\n·|]?/i,'').replace(/proyecto[:\s]*[^.\n·|]+[.\n·|]?/i,'').trim();c._mensaje=clean;}
+  return c;
+}
+
+// ── LOAD CLIENTES ─────────────────────────────────────────────────────────
+const _COLS_LISTA='id,nombre,contacto,tipo,estado,notas,created_at,orden,telefono,email,provincia,direccion,resumen,fuente,session_id,bot_activo,avisado,avisado_calif,bot_lock,ultimo_inbound,seguimiento_at,wa_negocio,primer_reply_at,fijado,seguimiento_manual,pide_asesor,enviado_at,ppto_seguido_at,ult_rol,ult_by,tiene_agente,tiene_seguimiento,reunion_at';
+
+async function loadClientes(periodico){
+  var sel=db.from('exh_clientes').select(_COLS_LISTA);
+  if(periodico)sel=sel.or('estado.is.null,estado.eq.consulta,estado.eq.cotizando,estado.eq.enviado');
+  else sel=sel.or('estado.is.null,estado.neq.silenciado');
+  const{data}=await sel.order('orden',{nullsFirst:true}).order('created_at',{ascending:false});
+  var frescos=(data||[]).map(_normalizarLead);
+  if(periodico&&Array.isArray(clientes)){var ids={};frescos.forEach(c=>{ids[String(c.id)]=true;});var conservar=clientes.filter(c=>c&&!ids[String(c.id)]);clientes=frescos.concat(conservar);}
+  else clientes=frescos;
+  renderClientes();_autoPerderInactivos();
+}
+async function loadAdjuntos(){var{data}=await db.from('exh_adjuntos').select('*').order('orden').order('created_at');adjuntos=data||[];if(clientes&&clientes.length)renderClientes();}
+
+// ── CLIENT HELPERS ────────────────────────────────────────────────────────
+const _ESTADO_PRIORIDAD={cerrado:0,enviado:1,cotizando:2,consulta:3,perdido:4};
+let _cliFiltro='todos',_cliBusqueda='';
+
+function _cliBusquedaNorm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');}
+function setCliBusqueda(v){_cliBusqueda=v||'';var clr=document.getElementById('cliente-buscar-clear');if(clr)clr.style.display=_cliBusqueda.trim()?'block':'none';renderCliSugerencias(_cliBusqueda);renderClientes();}
+function limpiarCliBusqueda(){_cliBusqueda='';var i=document.getElementById('cliente-buscar');if(i)i.value='';var c=document.getElementById('cliente-buscar-clear');if(c)c.style.display='none';var b=document.getElementById('cliente-buscar-sugerencias');if(b){b.style.display='none';b.innerHTML='';}renderClientes();}
+
+function renderCliSugerencias(q){
+  var box=document.getElementById('cliente-buscar-sugerencias');if(!box)return;
+  var qq=_cliBusquedaNorm((q||'').trim());
+  if(!qq){box.style.display='none';box.innerHTML='';return;}
+  var estLbl={consulta:'Consulta',cotizando:'En cotización',enviado:'Ppto. enviado',cerrado:'Cerrado',perdido:'Perdido'};
+  var matches=ordenarClientes(clientes).filter(c=>_cliMatchBusqueda(c,qq)).slice(0,8);
+  if(!matches.length){box.style.display='none';box.innerHTML='';return;}
+  box.innerHTML=matches.map(c=>{
+    var est=c.estado||'consulta',lbl=(est==='consulta'&&c.avisado_calif===true)?'Calificado':(estLbl[est]||'Consulta');
+    var tel=c.telefono||c.contacto||'',nom=String(c.nombre||'—').replace(/</g,'&lt;');
+    return '<div onmousedown="irACliente(\''+c.id+'\')" style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--gris-borde);display:flex;justify-content:space-between;gap:10px;align-items:center"><span style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+nom+'</span><span style="font-size:11px;color:var(--muted);white-space:nowrap">'+lbl+(tel?(' · '+tel):'')+'</span></div>';
+  }).join('');box.style.display='block';
+}
+function cliSugerenciasBlur(){setTimeout(()=>{var b=document.getElementById('cliente-buscar-sugerencias');if(b)b.style.display='none';},150);}
+
+function irACliente(id){
+  var box=document.getElementById('cliente-buscar-sugerencias');if(box){box.style.display='none';box.innerHTML='';}
+  var c=(clientes||[]).find(x=>String(x.id)===String(id));
+  var inp=document.getElementById('cliente-buscar');if(inp&&c){inp.value=c.nombre||'';inp.blur();}
+  _cliBusqueda=c?(c.nombre||''):_cliBusqueda;
+  var clr=document.getElementById('cliente-buscar-clear');if(clr)clr.style.display='block';
+  renderClientes();
+  setTimeout(()=>{var card=document.querySelector('.cliente-card[data-id="'+id+'"]');if(card){card.scrollIntoView({behavior:'smooth',block:'center'});var old=card.style.boxShadow;card.style.transition='box-shadow .2s';card.style.boxShadow='0 0 0 3px var(--violet)';setTimeout(()=>{card.style.boxShadow=old||'';},1600);}},80);
+}
+
+function _cliMatchBusqueda(c,q){if(!q)return true;var h=_cliBusquedaNorm([c.nombre,c.telefono,c.contacto,c.email].filter(Boolean).join(' '));return h.indexOf(q)!==-1;}
+function _cliEsBot(c){var f=c.fuente||c._fuente||'';if(f==='bot')return true;var n=(c.notas||'').toLowerCase();return n.includes('lead desde bot')||n.includes('bot whatsapp')||n.includes('bot instagram');}
+function _cliTieneInfo(c){if(!c)return false;if(c.resumen&&String(c.resumen).trim())return true;if(c.tipo&&String(c.tipo).trim()&&c.tipo!=='Sin especificar'&&c.tipo!=='Sin definir')return true;if(c.provincia&&String(c.provincia).trim())return true;if(c.direccion&&String(c.direccion).trim())return true;if(c.email&&String(c.email).trim())return true;return false;}
+function _cliInfoScore(c){if(!c)return 0;var s=0;if(c.tipo&&String(c.tipo).trim()&&c.tipo!=='Sin especificar'&&c.tipo!=='Sin definir')s+=1;if(c.provincia&&String(c.provincia).trim())s+=1;if(c.direccion&&String(c.direccion).trim())s+=1;if(c.email&&String(c.email).trim())s+=1;if(c.resumen&&String(c.resumen).trim()){var v=(String(c.resumen).match(/•/g)||[]).length;s+=Math.max(1,v);}return s;}
+function _cliUltimoMsg(c){var cv=Array.isArray(c&&c.conversacion)?c.conversacion:null;if(cv&&cv.length)return cv[cv.length-1];if(c&&(c.ult_rol||c.ult_by))return{role:c.ult_rol||'assistant',by:c.ult_by||undefined};return null;}
+function _cliSeguimientoManual(c){if(c&&c.seguimiento_manual===true)return true;var cv=Array.isArray(c&&c.conversacion)?c.conversacion:null;if(cv)return cv.some(m=>m&&m.by==='agente');return !!(c&&c.tiene_agente===true);}
+function _cliSeguimientoEnviadoAuto(c){var m=_cliUltimoMsg(c);return !!(m&&m.by==='seguimiento');}
+function _cliTieneSeguimiento(c){if(c&&c.tiene_seguimiento===true)return true;var cv=Array.isArray(c&&c.conversacion)?c.conversacion:null;if(cv)return cv.some(m=>m&&m.by==='seguimiento');return false;}
+function _cliSeguimientoFrio(c){var m=_cliUltimoMsg(c);return !!(m&&(m.by==='agente'||m.by==='seguimiento'));}
+function _cliRespondioPendiente(c){var m=_cliUltimoMsg(c);return(c&&c.bot_activo===false)&&!!m&&m.role==='user';}
+
+var DIAS_A_PERDIDO=2;
+function _cliDiasInactivo(c){var ref=c&&(c.seguimiento_at||c.ultimo_inbound||c.created_at);if(!ref)return 0;var t=new Date(ref).getTime();if(isNaN(t))return 0;return(Date.now()-t)/86400000;}
+
+async function _autoPerderInactivos(){
+  if(!Array.isArray(clientes))return;var cambios=[];
+  clientes.forEach(c=>{
+    if(!c||(c.estado||'consulta')!=='consulta')return;if(c.avisado_calif===true||c.pide_asesor===true)return;
+    if(!_cliSeguimientoFrio(c))return;if(!(_cliSeguimientoManual(c)||_cliSeguimientoEnviadoAuto(c)))return;
+    if(_cliDiasInactivo(c)<DIAS_A_PERDIDO)return;cambios.push(c);
+  });
+  if(!cambios.length)return;
+  for(var i=0;i<cambios.length;i++){var c=cambios[i],dias=Math.floor(_cliDiasInactivo(c));c.estado='perdido';c.notas=(c.notas?String(c.notas)+' · ':'')+('⏱ Auto-perdido: '+dias+' días sin respuesta');try{await db.from('exh_clientes').update({estado:'perdido',notas:c.notas}).eq('id',c.id);}catch(e){}}
+  toast(cambios.length+' lead(s) pasaron a Perdido por inactividad');renderClientes();
+}
+
+async function toggleFijar(id){var c=clientes.find(x=>String(x.id)===String(id));if(!c)return;c.fijado=!c.fijado;renderClientes();try{await db.from('exh_clientes').update({fijado:c.fijado}).eq('id',id);}catch(e){toast('No se pudo guardar');}}
+
+function _cliGrupoOrden(c){if(c&&(c.avisado_calif===true||c.pide_asesor===true))return 0;if(_cliRespondioPendiente(c))return 1;if(_cliSeguimientoManual(c))return 2;if(_cliSeguimientoEnviadoAuto(c))return 3;return 4;}
+
+function ordenarClientes(arr){
+  return arr.slice().sort(function(a,b){
+    var fa=(a.fijado===true)?0:1,fb=(b.fijado===true)?0:1;if(fa!==fb)return fa-fb;
+    var pa=(_ESTADO_PRIORIDAD[a.estado]!=null)?_ESTADO_PRIORIDAD[a.estado]:3,pb=(_ESTADO_PRIORIDAD[b.estado]!=null)?_ESTADO_PRIORIDAD[b.estado]:3;if(pa!==pb)return pa-pb;
+    if(a.estado==='enviado'&&b.estado==='enviado'){var segA=a.ppto_seguido_at?1:0,segB=b.ppto_seguido_at?1:0;if(segA!==segB)return segA-segB;if(!segA&&!segB){var eaA=new Date(a.enviado_at||a.created_at||0).getTime(),eaB=new Date(b.enviado_at||b.created_at||0).getTime();if(eaA!==eaB)return eaA-eaB;}}
+    if(a.estado==='cotizando'||a.estado==='consulta'){if(a.estado==='consulta'){var ka=(a.avisado_calif===true||a.pide_asesor===true)?0:1,kb=(b.avisado_calif===true||b.pide_asesor===true)?0:1;if(ka!==kb)return ka-kb;}return(new Date(a.created_at||0).getTime())-(new Date(b.created_at||0).getTime());}
+    var ga=_cliGrupoOrden(a),gb=_cliGrupoOrden(b);if(ga!==gb)return ga-gb;
+    var sA=_cliInfoScore(a),sB=_cliInfoScore(b);var va=(sA===0)?1:0,vb=(sB===0)?1:0;if(va!==vb)return va-vb;if(sA!==sB)return sB-sA;
+    var ba=_cliEsBot(a)?0:1,bb=_cliEsBot(b)?0:1;if(ba!==bb)return ba-bb;
+    return(new Date(b.created_at||0).getTime())-(new Date(a.created_at||0).getTime());
+  });
+}
+
+function setCliFiltro(f){_cliFiltro=f;renderClientes();}
+
+function renderCliFiltros(ordenados){
+  var cont=document.getElementById('cliente-filtros');if(!cont)return;
+  var defs=[['todos','Todos'],['cerrado','Cerrado'],['enviado','Enviado'],['cotizando','En cotización'],['calificado','Calificados'],['consulta','Consulta'],['perdido','Perdido']];
+  var counts={};(ordenados||[]).forEach(c=>{var e=c.estado||'consulta';if(e==='consulta'&&c.avisado_calif===true)counts['calificado']=(counts['calificado']||0)+1;else counts[e]=(counts[e]||0)+1;});
+  cont.innerHTML=defs.map(d=>{var key=d[0],txt=d[1],n=key==='todos'?(ordenados||[]).length:(counts[key]||0),act=_cliFiltro===key;var bg=act?'var(--violet)':'var(--gris)',col=act?'#fff':'var(--muted)',bd=act?'var(--violet)':'var(--gris-borde)';return '<button onclick="setCliFiltro(\''+key+'\')" style="font-size:11px;font-weight:600;padding:5px 11px;border-radius:20px;border:1px solid '+bd+';background:'+bg+';color:'+col+';cursor:pointer;white-space:nowrap">'+txt+' <span style="opacity:.7">'+n+'</span></button>';}).join('');
+}
+
+function _pptoSeguimiento(c){
+  if(!c||c.estado!=='enviado')return '';if(c.ppto_seguido_at)return '';
+  var extra='';
+  if(c.enviado_at){var t=new Date(c.enviado_at);if(!isNaN(t.getTime())){var hoy=new Date(),t0=new Date(t.getFullYear(),t.getMonth(),t.getDate()),h0=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()),dias=Math.round((h0-t0)/86400000),rel=dias<=0?'hoy':(dias===1?'hace 1 día':'hace '+dias+' días');extra=' (enviado '+rel+')';}}
+  return '<div class="cliente-meta" onclick="event.stopPropagation();marcarPptoSeguido(\''+c.id+'\')" title="Clic cuando hagas el seguimiento" style="color:var(--amber);font-weight:600;margin-top:2px;cursor:pointer">🔔 Hacer seguimiento'+extra+'</div>';
+}
+async function marcarPptoSeguido(id){var ahora=new Date().toISOString();var c=(clientes||[]).find(x=>String(x.id)===String(id));if(c)c.ppto_seguido_at=ahora;renderClientes();try{await db.from('exh_clientes').update({ppto_seguido_at:ahora}).eq('id',id);toast('✓ Seguimiento hecho');}catch(e){toast('No se pudo guardar');}}
+async function toggleSeguimientoPpto(id){var c=(clientes||[]).find(x=>String(x.id)===String(id));if(!c)return;var n=c.ppto_seguido_at?null:new Date().toISOString();c.ppto_seguido_at=n;renderClientes();try{await db.from('exh_clientes').update({ppto_seguido_at:n}).eq('id',id);toast(n?'✓ Seguimiento hecho':'🔔 Marcado para seguimiento');}catch(e){toast('No se pudo guardar');}}
+async function toggleReunion(id){var c=(clientes||[]).find(x=>String(x.id)===String(id));if(!c)return;var n=c.reunion_at?null:new Date().toISOString();c.reunion_at=n;renderClientes();try{await db.from('exh_clientes').update({reunion_at:n}).eq('id',id);toast(n?'📅 Agendó reunión':'Desmarcado');}catch(e){toast('No se pudo guardar');}}
+
+function _fechaIngreso(c){
+  var est=(c&&c.estado)||'consulta';if(est!=='consulta'&&est!=='cotizando')return '';
+  var d=c&&c.created_at;if(!d)return '';var t=new Date(d);if(isNaN(t.getTime()))return '';
+  var hoy=new Date(),t0=new Date(t.getFullYear(),t.getMonth(),t.getDate()),h0=new Date(hoy.getFullYear(),hoy.getMonth(),hoy.getDate()),dias=Math.round((h0-t0)/86400000);
+  var rel=dias<=0?'hoy':(dias===1?'ayer':'hace '+dias+' días');
+  var dd=String(t.getDate()).padStart(2,'0'),mm=String(t.getMonth()+1).padStart(2,'0');
+  var col=dias>=3?'var(--amber)':'var(--muted)';
+  return '<div class="cliente-meta" style="color:'+col+';font-weight:'+(dias>=3?'600':'400')+'">📅 Ingresó '+rel+' · '+dd+'/'+mm+'</div>';
+}
+
+function _esMailWA(c){var n=String((c&&c.notas)||'').toLowerCase(),sid=String((c&&c.session_id)||'');return sid.indexOf('wa:')===0&&(n.indexOf('vino de mail')>=0||n.indexOf('lead desde mail')>=0);}
+
+function _cardCuerpo(c){
+  var out='';
+  if(_esMailWA(c)){out+='<div class="cliente-meta" style="margin-top:2px">💬 ✋ La iniciaste vos por WhatsApp · ✉️ Vino de Mail</div>';var det=(c._mensaje!=null?c._mensaje:'')||c.resumen||'';if(det)out+='<div class="cliente-meta">🤖 '+det+'</div>';}
+  else{var msg=(c._mensaje!=null?c._mensaje:c.notas);if(msg)out+='<div class="cliente-meta" style="margin-top:2px">💬 '+msg+'</div>';if(c.resumen)out+='<div class="cliente-meta">🤖 '+c.resumen+'</div>';}
+  return out;
+}
+
+// ── RENDER CLIENTES ───────────────────────────────────────────────────────
+function renderClientes(){
+  const list=document.getElementById('cliente-list');if(!list)return;
+  const statusMap={consulta:['status-consulta','Consulta'],cotizando:['status-cotizando','En cotización'],enviado:['status-enviado','Ppto. enviado'],cerrado:['status-cerrado','Cerrado ✅'],perdido:['status-perdido','Perdido ❌']};
+  const ordenados=ordenarClientes(clientes);renderCliFiltros(ordenados);
+  var _esCalifLead=c=>(c.estado||'consulta')==='consulta'&&c.avisado_calif===true;
+  var _q=_cliBusquedaNorm(_cliBusqueda.trim());
+  var visibles;
+  if(_q){visibles=ordenados.filter(c=>_cliMatchBusqueda(c,_q));if(!visibles.length){list.innerHTML='<div class="empty">Sin resultados para "'+_cliBusqueda.trim().replace(/</g,'&lt;')+'"</div>';return;}}
+  else{visibles=(_cliFiltro==='todos')?ordenados:(_cliFiltro==='calificado')?ordenados.filter(_esCalifLead):(_cliFiltro==='consulta')?ordenados.filter(c=>(c.estado||'consulta')==='consulta'&&!_esCalifLead(c)):ordenados.filter(c=>(c.estado||'consulta')===_cliFiltro);if(!visibles.length){list.innerHTML='<div class="empty">Sin clientes'+(_cliFiltro!=='todos'?' en esta etapa':' todavía')+'</div>';return;}}
+
+  list.innerHTML=visibles.map(c=>{
+    const st=statusMap[c.estado]||['status-consulta','Consulta'];let cls=st[0],lbl=st[1];
+    const nAdj=_adjCountCliente(c.id);const segMan=_cliSeguimientoManual(c);
+    const esConsulta=(c.estado||'consulta')==='consulta',esCalif=c.avisado_calif===true,esAsesor=c.pide_asesor===true;
+    const _ultMsg=_cliUltimoMsg(c),clienteRespondio=(c.bot_activo===false)&&!!_ultMsg&&_ultMsg.role==='user';
+    const segBot=esConsulta&&!esCalif&&!esAsesor&&!segMan&&_cliTieneSeguimiento(c),segBotResp=segBot&&!_cliSeguimientoEnviadoAuto(c);
+    const respManual=esConsulta&&!esCalif&&!esAsesor&&clienteRespondio&&!segBotResp;
+    if(esConsulta&&esCalif){cls='status-calificado';lbl='Calificado';}
+    else if(esConsulta&&esAsesor){cls='status-asesor';lbl='Asesor';}
+    return `<div class="cliente-card" data-id="${c.id}" style="display:flex;align-items:flex-start;gap:0${c.fijado?';border-left:3px solid var(--amber)':''}">
+      <div style="flex:1;min-width:0">
+        <div class="cliente-name">${c.nombre||'—'}</div>
+        <div class="cliente-meta">📱 ${c.telefono||c.contacto||'—'}${c.email?` · ✉️ ${c.email}`:''}</div>
+        <div class="cliente-meta">🏷️ ${tipoClienteDisplay(c)}${c.provincia?` · 📍 ${c.provincia}`:''}${c.direccion?` · 📌 ${c.direccion}`:''}</div>
+        ${_fechaIngreso(c)}${_pptoSeguimiento(c)}${_cardCuerpo(c)}${_adjClienteChips(c.id)}
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+        <span class="cliente-status-pill ${cls}">${lbl}</span>
+        ${c.fijado?'<span style="font-size:10px;font-weight:700;color:var(--amber);background:var(--amber-light);padding:2px 7px;border-radius:8px;white-space:nowrap">📌 Fijado</span>':''}
+        ${leadFuenteTag(c)}
+        ${segBot?'<span style="font-size:10px;font-weight:600;color:var(--muted);background:var(--gris);padding:2px 7px;border-radius:8px;white-space:nowrap">📩 Seguimiento enviado</span>':''}
+        ${segBotResp?'<span style="font-size:10px;font-weight:700;color:var(--violet);background:var(--violet-badge);padding:2px 7px;border-radius:8px;white-space:nowrap">💬 Respondió</span>':''}
+        ${(esConsulta&&!esCalif&&!esAsesor&&segMan)?'<span style="font-size:10px;font-weight:600;color:var(--amber);background:var(--amber-light);padding:2px 7px;border-radius:8px;white-space:nowrap">👤 Seguimiento manual</span>':''}
+        ${respManual?'<span style="font-size:10px;font-weight:700;color:var(--violet);background:var(--violet-badge);padding:2px 7px;border-radius:8px;white-space:nowrap">💬 Respondió</span>':''}
+        ${c.reunion_at?'<span style="font-size:10px;font-weight:700;color:#185FA5;background:var(--azul-light);padding:2px 7px;border-radius:8px;white-space:nowrap">📅 Agendó reunión</span>':''}
+        <div style="display:flex;gap:4px">
+          <button class="edit-btn" onclick="toggleFijar('${c.id}')" title="${c.fijado?'Quitar de fijados':'Fijar arriba'}" style="font-size:14px;${c.fijado?'':'opacity:.3'}">📌</button>
+          <button class="edit-btn" onclick="openAdjuntosCliente('${c.id}')" title="Fotos y archivos" style="font-size:14px">📎${nAdj?`<span style="font-size:9px;font-weight:700;color:var(--violet);vertical-align:super">${nAdj}</span>`:''}</button>
+          <button class="edit-btn" onclick="waOpen('${c.id}')" title="Conversación WhatsApp" style="font-size:14px">💬</button>
+          ${c.estado==='enviado'?`<button class="edit-btn" onclick="event.stopPropagation();toggleSeguimientoPpto('${c.id}')" title="Seguimiento" style="font-size:14px;${c.ppto_seguido_at?'opacity:.3':''}">🔔</button>`:''}
+          <button class="edit-btn" onclick="event.stopPropagation();toggleReunion('${c.id}')" title="${c.reunion_at?'Desmarcar reunión':'Marcar reunión'}" style="font-size:14px;${c.reunion_at?'':'opacity:.3'}">📅</button>
+          <button class="edit-btn" onclick="openClienteModal('${c.id}')">✎</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── WA CHAT ───────────────────────────────────────────────────────────────
+const WA_NUM='541169602390';
+const WA_SEND_URL=''; // Edge function — se conecta cuando esté desplegada
+const WA_SEND_YCLOUD_URL='';
+const IG_SEND_URL='';
+let _waCliente=null,_waChan=null,_waPoll=null,_waSig='',_waAdjunto=null;
+
+const _WA_DEMO=[
+  {role:'user',content:'Hola, quería info sobre departamentos en Palermo'},
+  {role:'assistant',content:'¡Hola! 👋 Soy el asistente de ExeHome. ¿Estás buscando para comprar o alquilar?'},
+  {role:'user',content:'Para comprar, 2 ambientes'},
+  {role:'assistant',content:'¡Genial! ¿Tenés un presupuesto en mente? Y ¿preferís alguna zona en particular de Palermo?'},
+  {role:'user',content:'Hollywood, hasta 120 mil dólares'},
+  {role:'assistant',content:'Perfecto, tenemos varias opciones en esa zona. ¿Me pasás tu nombre para que un asesor te contacte?'},
+];
+
+async function waOpen(id){
+  var c=clientes.find(x=>String(x.id)===String(id));if(!c)return;_waCliente=c;
+  if(!Array.isArray(c.conversacion)){try{var r=await db.from('exh_clientes').select('conversacion').eq('id',id).maybeSingle();if(r&&r.data)c.conversacion=r.data.conversacion;}catch(e){}}
+  document.getElementById('wa-nombre').textContent=c.nombre||'Cliente';
+  var _esIG=String(c.session_id||'').indexOf('ig:')===0||(c.notas||'').toLowerCase().includes('bot instagram');
+  document.getElementById('wa-tel').textContent=_esIG?('📸 '+(c.contacto||c.nombre||'—')+' · Instagram'):('📱 '+(c.telefono||c.contacto||'—')+' · WhatsApp');
+  document.getElementById('wa-avatar').textContent=(c.nombre||'?').trim().charAt(0).toUpperCase()||'?';
+  document.getElementById('wa-resumen').innerHTML='<span style="display:inline-block;font-size:10px;background:#e9defb;color:#6b3fc0;padding:2px 8px;border-radius:8px;font-weight:700;margin-bottom:3px">Lead Bot 🤖</span><br>'+(c.resumen?escHtml(c.resumen).replace(/\n/g,'<br>'):(c.notas?escHtml(c.notas).replace(/\n/g,'<br>'):'Sin resumen todavía'));
+  var convo=Array.isArray(c.conversacion)?c.conversacion:[];var demo=convo.length===0;
+  document.getElementById('wa-demo-banner').style.display=demo?'block':'none';
+  waRenderChat(demo?_WA_DEMO:convo);waSetModoUI(c.bot_activo!==false);
+  _waSig=(Array.isArray(convo)?convo.length:0)+'|'+(c.bot_activo!==false)+'|'+(c.resumen||'');
+  openOverlay('wa-modal');
+  if(_waPoll)clearInterval(_waPoll);_waPoll=setInterval(waRefrescar,4000);
+  try{if(_waChan)db.removeChannel(_waChan);_waChan=db.channel('wa_'+c.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'exh_clientes',filter:'id=eq.'+c.id},p=>{_waCliente=p.new;var cv=Array.isArray(p.new.conversacion)?p.new.conversacion:[];_waSig=cv.length+'|'+(p.new.bot_activo!==false)+'|'+(p.new.resumen||'');if(cv.length){document.getElementById('wa-demo-banner').style.display='none';waRenderChat(cv);}waSetModoUI(p.new.bot_activo!==false);document.getElementById('wa-resumen').innerHTML='<span style="display:inline-block;font-size:10px;background:#e9defb;color:#6b3fc0;padding:2px 8px;border-radius:8px;font-weight:700;margin-bottom:3px">Lead Bot 🤖</span><br>'+(p.new.resumen?escHtml(p.new.resumen).replace(/\n/g,'<br>'):(p.new.notas?escHtml(p.new.notas).replace(/\n/g,'<br>'):''));}).subscribe();}catch(e){}
+}
+
+async function waRefrescar(){
+  if(!_waCliente||!document.getElementById('wa-modal').classList.contains('open'))return;if(document.visibilityState!=='visible')return;
+  try{var{data}=await db.from('exh_clientes').select('conversacion,bot_activo,resumen,notas').eq('id',_waCliente.id).maybeSingle();if(!data)return;
+  var cv=Array.isArray(data.conversacion)?data.conversacion:[],sig=cv.length+'|'+(data.bot_activo!==false)+'|'+(data.resumen||'');if(sig===_waSig)return;_waSig=sig;_waCliente.conversacion=cv;_waCliente.bot_activo=data.bot_activo;_waCliente.resumen=data.resumen;
+  if(cv.length){document.getElementById('wa-demo-banner').style.display='none';waRenderChat(cv);}waSetModoUI(data.bot_activo!==false);
+  document.getElementById('wa-resumen').innerHTML='<span style="display:inline-block;font-size:10px;background:#e9defb;color:#6b3fc0;padding:2px 8px;border-radius:8px;font-weight:700;margin-bottom:3px">Lead Bot 🤖</span><br>'+(data.resumen?escHtml(data.resumen).replace(/\n/g,'<br>'):(data.notas?escHtml(data.notas).replace(/\n/g,'<br>'):''));}catch(e){}
+}
+function waCleanup(){if(_waPoll){clearInterval(_waPoll);_waPoll=null;}try{if(_waChan){db.removeChannel(_waChan);_waChan=null;}}catch(e){}}
+
+function waRenderChat(convo){
+  var chat=document.getElementById('wa-chat');
+  chat.innerHTML=convo.map(m=>{
+    var who=(m.role==='user')?'cliente':(m.by==='agente'?'agente':'bot');
+    if(who==='cliente')return '<div style="align-self:flex-start;max-width:78%;background:#fff;border:1px solid var(--gris-borde);border-radius:14px;border-bottom-left-radius:4px;padding:8px 12px;font-size:13.5px;line-height:1.45">'+escHtml(m.content)+'</div>';
+    if(who==='agente'){var cuerpo;if(m.mediaUrl){var link='<a href="'+escHtml(m.mediaUrl)+'" target="_blank" style="color:#fff;text-decoration:underline">📎 '+escHtml(m.filename||'archivo')+'</a>';var pie=(m.content&&m.content!==('📎 '+(m.filename||'archivo')))?'<div style="margin-top:4px">'+escHtml(m.content)+'</div>':'';cuerpo=link+pie;}else cuerpo=escHtml(m.content);return '<div style="align-self:flex-end;max-width:78%;background:var(--violet);color:#fff;border-radius:14px;border-bottom-right-radius:4px;padding:8px 12px;font-size:13.5px;line-height:1.45"><div style="font-size:10px;font-weight:700;opacity:.75;margin-bottom:2px">Vos</div>'+cuerpo+'</div>';}
+    return '<div style="align-self:flex-start;max-width:78%;background:var(--violet-light);border-radius:14px;border-bottom-left-radius:4px;padding:8px 12px;font-size:13.5px;line-height:1.45"><div style="font-size:10px;font-weight:700;color:var(--violet);margin-bottom:2px">🤖 Bot</div>'+escHtml(m.content)+'</div>';
+  }).join('');chat.scrollTop=chat.scrollHeight;
+}
+
+function waSetModoUI(botActivo){
+  document.getElementById('wa-btn-bot').style.background=botActivo?'var(--violet)':'#fff';document.getElementById('wa-btn-bot').style.color=botActivo?'#fff':'var(--muted)';
+  document.getElementById('wa-btn-yo').style.background=botActivo?'#fff':'var(--violet)';document.getElementById('wa-btn-yo').style.color=botActivo?'var(--muted)':'#fff';
+  document.getElementById('wa-estado').textContent=botActivo?'🤖 El bot está atendiendo':'✋ La estás atendiendo vos';
+  var reply=document.getElementById('wa-reply');
+  if(botActivo){reply.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center">Tocá "La atiendo yo" para responder</div>';}
+  else{reply.innerHTML='<div id="wa-adjunto-prev" style="display:none;align-items:center;gap:10px;background:#f0f2f5;border:1.5px solid var(--gris-borde);border-radius:12px;padding:8px 10px;margin-bottom:8px"></div><div style="display:flex;gap:8px;align-items:center"><label title="Adjuntar archivo" style="flex-shrink:0;width:42px;height:42px;border-radius:50%;background:#fff;border:1.5px solid var(--gris-borde);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer">📎<input id="wa-file" type="file" accept="application/pdf,image/*" style="display:none" onchange="waAdjuntar(this)"></label><input id="wa-inp" placeholder="Escribí tu respuesta..." style="flex:1;border:1.5px solid var(--gris-borde);border-radius:22px;padding:10px 16px;font-size:14px;font-family:inherit;outline:none"><button onclick="waEnviar()" style="background:var(--violet);color:#fff;border:none;border-radius:50%;width:42px;height:42px;font-size:17px;cursor:pointer;flex-shrink:0">➤</button></div>';var i=document.getElementById('wa-inp');if(i){i.focus();i.addEventListener('keydown',e=>{if(e.key==='Enter')waEnviar();});}}
+}
+
+async function waSetModo(botActivo){waSetModoUI(botActivo);if(!_waCliente)return;try{await db.from('exh_clientes').update({bot_activo:botActivo}).eq('id',_waCliente.id);_waCliente.bot_activo=botActivo;}catch(e){}}
+
+function waAdjuntar(input){
+  var file=input.files&&input.files[0];if(!file||!_waCliente)return;input.value='';
+  if(file.size>16*1024*1024){toast('Archivo muy grande (máx 16 MB)');return;}_waAdjunto=file;
+  var prev=document.getElementById('wa-adjunto-prev');if(!prev)return;
+  var esImg=/^image\//.test(file.type);
+  var thumb=esImg?'<img src="'+URL.createObjectURL(file)+'" style="width:46px;height:46px;object-fit:cover;border-radius:8px;flex-shrink:0">':'<div style="width:46px;height:46px;border-radius:8px;background:var(--violet);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">📄</div>';
+  prev.innerHTML=thumb+'<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(file.name)+'</div><div style="font-size:11px;color:var(--muted)">'+(file.size/1024/1024).toFixed(2)+' MB</div></div><button onclick="waQuitarAdjunto()" title="Quitar" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);flex-shrink:0">✕</button>';
+  prev.style.display='flex';var i=document.getElementById('wa-inp');if(i){i.placeholder='Agregá un texto (opcional)…';i.focus();}
+}
+function waQuitarAdjunto(){_waAdjunto=null;var p=document.getElementById('wa-adjunto-prev');if(p){p.style.display='none';p.innerHTML='';}var i=document.getElementById('wa-inp');if(i)i.placeholder='Escribí tu respuesta...';}
+
+async function waEnviar(){
+  if(!_waCliente)return;var inp=document.getElementById('wa-inp'),texto=inp?inp.value.trim():'';
+  if(_waAdjunto){
+    var file=_waAdjunto,cap=texto;_waAdjunto=null;if(inp){inp.value='';inp.placeholder='Escribí tu respuesta...';}
+    var prev=document.getElementById('wa-adjunto-prev');if(prev){prev.style.display='none';prev.innerHTML='';}toast('Enviando archivo…');
+    try{var ext=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,''),path='c'+(_waCliente.id||'x')+'/'+Date.now()+'.'+ext;
+    var up=await db.storage.from('chat-adjuntos').upload(path,file,{contentType:file.type||'application/octet-stream',upsert:false});if(up.error){toast('No se pudo subir');return;}
+    var url=db.storage.from('chat-adjuntos').getPublicUrl(path).data.publicUrl;
+    var convo=Array.isArray(_waCliente.conversacion)?_waCliente.conversacion:[];convo.push({role:'assistant',by:'agente',content:cap||('📎 '+file.name),mediaUrl:url,filename:file.name});
+    _waCliente.conversacion=convo;document.getElementById('wa-demo-banner').style.display='none';waRenderChat(convo);
+    await db.from('exh_clientes').update({conversacion:convo,bot_activo:false}).eq('id',_waCliente.id);_waCliente.bot_activo=false;waSetModoUI(false);
+    toast('Archivo guardado ✅ (envío WA pendiente de configurar)');}catch(e){toast('Error al enviar');}return;
+  }
+  if(!texto)return;inp.value='';
+  var convo=Array.isArray(_waCliente.conversacion)?_waCliente.conversacion:[];convo.push({role:'assistant',by:'agente',content:texto});_waCliente.conversacion=convo;
+  document.getElementById('wa-demo-banner').style.display='none';waRenderChat(convo);
+  try{await db.from('exh_clientes').update({conversacion:convo,bot_activo:false}).eq('id',_waCliente.id);_waCliente.bot_activo=false;waSetModoUI(false);toast('Guardado ✓ (envío WA pendiente de configurar)');}catch(e){toast('No se pudo guardar');}
+}
+function waClose(){if(_waChan){try{db.removeChannel(_waChan);}catch(e){}_waChan=null;}closeModal('wa-modal');}
+
+// ── BOT CONFIG ────────────────────────────────────────────────────────────
+async function botConfigOpen(){
+  openOverlay('bot-config-modal');var info=document.getElementById('bot-config-info');info.textContent='Cargando...';
+  try{var{data}=await db.from('exh_bot_config').select('*').eq('id',1).maybeSingle();document.getElementById('bot-instrucciones').value=(data&&data.instrucciones)||'';document.getElementById('bot-conocimiento').value=(data&&data.conocimiento)||'';info.textContent=data&&data.updated_at?('Última edición: '+new Date(data.updated_at).toLocaleString('es-AR')):'';}
+  catch(e){info.textContent='⚠ No se pudo cargar (¿falta correr el SQL de exh_bot_config?)';}
+}
+async function botConfigSave(){
+  var payload={id:1,instrucciones:document.getElementById('bot-instrucciones').value.trim(),conocimiento:document.getElementById('bot-conocimiento').value.trim(),updated_at:new Date().toISOString()};
+  try{var{error}=await db.from('exh_bot_config').upsert(payload,{onConflict:'id'});if(error)throw error;toast('Bot actualizado ✓');closeModal('bot-config-modal');}catch(e){toast('⚠ No se pudo guardar');}
+}
+
+// ── BOT STATS ─────────────────────────────────────────────────────────────
+function _statFuente(c){var f=c.fuente||c._fuente||'';if(!f){var n=(c.notas||'').toLowerCase();if(n.includes('lead desde bot')||n.includes('bot whatsapp')||n.includes('bot instagram')||n.includes('comentario instagram'))f='bot';else if(n.includes('lead desde whatsapp'))f='whatsapp';else if(n.includes('lead desde mail')||n.includes('pagina web')||n.includes('página web'))f='mail';}return f||'manual';}
+function _statBar(l,c,mx,col){var p=mx?Math.round(c/mx*100):0;return '<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span style="color:#333">'+l+'</span><span style="font-weight:700;color:var(--violet)">'+c+'</span></div><div style="height:8px;background:#eee;border-radius:5px;overflow:hidden"><div style="height:100%;width:'+p+'%;background:'+(col||'var(--violet)')+';border-radius:5px"></div></div></div>';}
+function _statCard(n,l,col,sub){return '<div style="flex:1;min-width:110px;background:#fff;border:1px solid var(--gris-borde);border-radius:10px;padding:12px 10px;text-align:center"><div style="font-size:26px;font-weight:800;line-height:1;color:'+(col||'var(--violet)')+'">'+n+'</div><div style="font-size:11px;color:var(--muted);margin-top:5px;font-weight:600;text-transform:uppercase;letter-spacing:.03em">'+l+'</div>'+(sub?'<div style="font-size:10.5px;color:var(--violet);margin-top:4px;font-weight:700">'+sub+'</div>':'')+'</div>';}
+
+function botStatsOpen(){
+  openOverlay('bot-stats-modal');var body=document.getElementById('bot-stats-body'),cs=Array.isArray(clientes)?clientes:[];
+  if(!cs.length){body.innerHTML='<div class="empty">Todavía no hay leads cargados.</div>';return;}
+  var total=cs.length,porFuente={bot:0,whatsapp:0,mail:0,manual:0};cs.forEach(c=>{var f=_statFuente(c);porFuente[f]=(porFuente[f]||0)+1;});
+  var leadsBot=cs.filter(c=>_statFuente(c)==='bot');
+  var estOrden=['consulta','cotizando','enviado','cerrado','perdido'],estLbl={consulta:'Consulta',cotizando:'En cotización',enviado:'Ppto. enviado',cerrado:'Cerrado ✅',perdido:'Perdido ❌'},estColor={consulta:'#8a8a8a',cotizando:'#c98a1e',enviado:'#1a73e8',cerrado:'var(--violet)',perdido:'#c0392b'};
+  var porEstado={};estOrden.forEach(e=>{porEstado[e]=0;});cs.forEach(c=>{var e=c.estado||'consulta';porEstado[e]=(porEstado[e]||0)+1;});
+  var porTipo={};cs.forEach(c=>{var t=tipoClienteDisplay(c)||'Sin especificar';porTipo[t]=(porTipo[t]||0)+1;});
+  var porProv={};cs.forEach(c=>{var p=(c.provincia||'').trim();if(p)porProv[p]=(porProv[p]||0)+1;});
+  var calificados=cs.filter(c=>c.avisado_calif===true).length,calActuales=cs.filter(c=>c.avisado_calif===true&&(c.estado||'consulta')==='consulta').length;
+  var cerrados=porEstado['cerrado']||0,intervenidos=cs.filter(c=>c.bot_activo===false).length;
+  var botConEmail=leadsBot.filter(c=>c.email&&String(c.email).trim()).length,pctEmail=leadsBot.length?Math.round(botConEmail/leadsBot.length*100):0,pctConv=total?Math.round(cerrados/total*100):0;
+  var now=new Date(),hoyStr=now.toDateString(),d1=0,d7=0,d30=0,d1c=0,d7c=0,d30c=0;
+  cs.forEach(c=>{if(!c.created_at)return;var dt=new Date(c.created_at);if(isNaN(dt))return;var esC=c.avisado_calif===true;if(dt.toDateString()===hoyStr){d1++;if(esC)d1c++;}var dias=(now.getTime()-dt.getTime())/86400000;if(dias<7){d7++;if(esC)d7c++;}if(dias<30){d30++;if(esC)d30c++;}});
+
+  function rankBloque(titulo,obj,colorFn){var entries=Object.keys(obj).map(k=>[k,obj[k]]).filter(e=>e[1]>0);entries.sort((a,b)=>b[1]-a[1]);if(!entries.length)return '';var max=entries[0][1];return '<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:14px 0 5px;border-bottom:1px solid var(--gris-borde);margin-bottom:8px">'+titulo+'</div>'+entries.map(e=>_statBar(e[0],e[1],max,colorFn?colorFn(e[0]):null)).join('');}
+
+  var maxEst=Math.max.apply(null,estOrden.map(e=>porEstado[e]).concat([calActuales,1]));
+  var embudo='<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:14px 0 5px;border-bottom:1px solid var(--gris-borde);margin-bottom:8px">Embudo por estado</div>'+estOrden.map(e=>_statBar(estLbl[e],porEstado[e],maxEst,estColor[e])).join('')+_statBar('Calificado ✅',calActuales,maxEst,'var(--violet)');
+  var fuenteLbl={bot:'🤖 Bot',whatsapp:'💬 WhatsApp',mail:'✉️ Mail / web',manual:'✍️ Carga manual'},fuenteObj={};Object.keys(porFuente).forEach(k=>{if(porFuente[k]>0)fuenteObj[fuenteLbl[k]]=porFuente[k];});
+
+  body.innerHTML='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">'+_statCard(total,'Leads totales')+_statCard(porFuente.bot,'Del bot 🤖','#6b3fc0')+_statCard(calificados,'Calificados ✅')+_statCard(cerrados,'Operaciones cerradas','#6D28D9')+'</div>'
+    +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:14px 0 5px;border-bottom:1px solid var(--gris-borde);margin-bottom:8px">Actividad reciente</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">'+_statCard(d1,'Hoy',null,d1c+' calif. ✅')+_statCard(d7,'Últimos 7 días',null,d7c+' calif. ✅')+_statCard(d30,'Últimos 30 días',null,d30c+' calif. ✅')+'</div>'
+    +embudo
+    +'<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:14px 0 5px;border-bottom:1px solid var(--gris-borde);margin-bottom:8px">Rendimiento del bot</div>'
+    +'<div style="background:var(--violet-light);border:1px solid var(--violet-badge);border-radius:10px;padding:12px 14px;font-size:13px;line-height:1.9;color:#3b1f6e">📈 Conversión a cierre: <b>'+pctConv+'%</b> ('+cerrados+' de '+total+')<br>🤖 Leads que atendió el bot: <b>'+leadsBot.length+'</b><br>✉️ Emails capturados: <b>'+botConEmail+'</b>'+(leadsBot.length?' ('+pctEmail+'%)':'')+'<br>✋ Charlas intervenidas: <b>'+intervenidos+'</b></div>'
+    +rankBloque('Por tipo de operación',porTipo)
+    +rankBloque('Por origen del lead',fuenteObj)
+    +(Object.keys(porProv).length?rankBloque('Por provincia / zona',porProv):'');
+}
+
+// ── MODAL CLIENTE ─────────────────────────────────────────────────────────
+function openClienteModal(id=null){
+  document.getElementById('cli-id').value=id||'';document.getElementById('cli-btn-delete').style.display=id?'block':'none';
+  if(id){const c=clientes.find(x=>x.id==id);if(!c)return;document.getElementById('cli-nombre').value=c.nombre||'';document.getElementById('cli-tel').value=c.telefono||c.contacto||'';document.getElementById('cli-email').value=c.email||'';document.getElementById('cli-provincia').value=c.provincia||'';document.getElementById('cli-direccion').value=c.direccion||'';document.getElementById('cli-notas').value=(c._mensaje!=null?c._mensaje:(c.notas||''));document.getElementById('cli-resumen').value=c.resumen||'';document.getElementById('cli-fuente').value=c.fuente||c._fuente||'';setSelectValuePreservingOption(document.getElementById('cli-tipo'),c.tipo,c.notas);document.getElementById('cli-estado').value=c.estado;}
+  else{['cli-nombre','cli-tel','cli-email','cli-provincia','cli-direccion','cli-notas','cli-resumen','cli-fuente'].forEach(x=>document.getElementById(x).value='');document.getElementById('cli-tipo').value='';document.getElementById('cli-estado').value='consulta';}
+  openOverlay('modal-cliente');setTimeout(()=>document.getElementById('cli-nombre').focus(),80);
+}
+
+async function saveCliente(){
+  const id=document.getElementById('cli-id').value,_tel=document.getElementById('cli-tel').value.trim();
+  const payload={nombre:document.getElementById('cli-nombre').value.trim(),telefono:_tel,contacto:_tel,email:document.getElementById('cli-email').value.trim(),provincia:document.getElementById('cli-provincia').value.trim(),direccion:document.getElementById('cli-direccion').value.trim(),tipo:normalizarTipoCliente(document.getElementById('cli-tipo').value,document.getElementById('cli-notas').value),estado:document.getElementById('cli-estado').value,notas:document.getElementById('cli-notas').value.trim(),resumen:document.getElementById('cli-resumen').value.trim(),fuente:document.getElementById('cli-fuente').value.trim()||'manual'};
+  if(!payload.nombre){toast('Ingresá el nombre');return;}
+  if(payload.estado==='enviado'){var _prev=id?(clientes||[]).find(x=>String(x.id)===String(id)):null;payload.enviado_at=(_prev&&_prev.enviado_at)?_prev.enviado_at:new Date().toISOString();}
+  setSyncState('loading');let error;
+  if(id)({error}=await db.from('exh_clientes').update(payload).eq('id',id));else({error}=await db.from('exh_clientes').insert(payload));
+  closeModal('modal-cliente');if(!error){await loadClientes();toast('Guardado ✓');setSyncState('ok');}
+}
+
+async function deleteCliente(){const id=document.getElementById('cli-id').value;if(!id||!confirm('¿Eliminar?'))return;await db.from('exh_clientes').delete().eq('id',id);closeModal('modal-cliente');await loadClientes();toast('Eliminado');}
+
+// ── DRAG/DROP ─────────────────────────────────────────────────────────────
+let cliDragIdx=null;
+function cliDragStart(e,idx){cliDragIdx=idx;e.currentTarget.style.opacity='0.35';e.dataTransfer.effectAllowed='move';}
+async function cliDragDrop(e,targetIdx){e.preventDefault();e.currentTarget.style.borderColor='';e.currentTarget.style.background='';document.querySelectorAll('.cliente-card').forEach(c=>{c.style.opacity='';});if(cliDragIdx===null||cliDragIdx===targetIdx){cliDragIdx=null;return;}await doCliReorder(cliDragIdx,targetIdx);cliDragIdx=null;}
+async function doCliReorder(srcIdx,tgtIdx){const moved=clientes.splice(srcIdx,1)[0];clientes.splice(tgtIdx,0,moved);renderClientes();setSyncState('loading');await Promise.all(clientes.map((c,i)=>db.from('exh_clientes').update({orden:i}).eq('id',c.id)));setSyncState('ok');toast('Orden guardado ✓');}
+
+// ── VOZ CLIENTE ───────────────────────────────────────────────────────────
+let _vcRec=null,_vcActive=false,_vcText='';
+function startVozCliente(){clearVozCli();document.getElementById('modal-voz-cli').style.display='flex';}
+function toggleVozCli(){_vcActive?stopVozCli():startVozRecCli();}
+function startVozRecCli(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Usá Chrome para reconocimiento de voz');return;}
+  _vcText='';_vcActive=true;var btn=document.getElementById('voz-cli-btn');btn.classList.add('voz-recording');btn.textContent='⏹';
+  document.getElementById('voz-cli-status').textContent='🔴 Escuchando...';document.getElementById('voz-cli-transcript').style.display='none';document.getElementById('voz-cli-preview').style.display='none';
+  _vcRec=new SR();_vcRec.lang='es-AR';_vcRec.continuous=true;_vcRec.interimResults=true;
+  _vcRec.onresult=e=>{let f='',i2='';for(let x=e.resultIndex;x<e.results.length;x++){if(e.results[x].isFinal)f+=e.results[x][0].transcript;else i2+=e.results[x][0].transcript;}if(f)_vcText+=f;document.getElementById('voz-cli-transcript-text').textContent=_vcText+i2;document.getElementById('voz-cli-transcript').style.display='block';};
+  _vcRec.onerror=e=>{stopVozCli();document.getElementById('voz-cli-status').textContent='⚠ Error: '+e.error;};
+  _vcRec.onend=()=>{_vcActive=false;var b2=document.getElementById('voz-cli-btn');b2.classList.remove('voz-recording');b2.textContent='🎤';var t=_vcText.trim();if(t.length>2)processVozCli(t);else document.getElementById('voz-cli-status').textContent='No se detectó voz.';};
+  _vcRec.start();
+}
+function stopVozCli(){_vcActive=false;document.getElementById('voz-cli-status').textContent='⏳ Procesando...';if(_vcRec)try{_vcRec.stop();}catch(e){}}
+
+async function processVozCli(text){
+  var status=document.getElementById('voz-cli-status');status.textContent='🤖 Interpretando...';
+  function show(v){document.getElementById('vc-nombre').value=v.nombre||text;document.getElementById('vc-contacto').value=v.contacto||'';var ts=document.getElementById('vc-tipo');if(v.tipo)[...ts.options].forEach(o=>{if(o.value.toLowerCase().includes(v.tipo.toLowerCase()))ts.value=o.value;});document.getElementById('vc-estado').value=v.estado||'consulta';document.getElementById('vc-notas').value=v.notas||'';document.getElementById('voz-cli-preview').style.display='block';document.getElementById('voz-cli-clear').style.display='inline';}
+  let parsed=null;
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:250,messages:[{role:'user',content:`Extraé los datos de este cliente dictado y completá cada campo.
+Texto dictado: "${text}"
+
+Respondé SOLO con JSON válido:
+{"nombre":"SOLO nombre de persona/empresa","contacto":"teléfono/email o vacío","tipo":"Compra — Casa|Compra — Departamento|Compra — Terreno|Compra — PH|Venta — Casa|Venta — Departamento|Venta — Terreno|Venta — PH|Alquiler|Alquiler temporario|Tasación|Otro","estado":"consulta|cotizando|enviado|cerrado|perdido","notas":"detalles extra: presupuesto, ambientes, zona"}
+
+Campo "nombre": ÚNICAMENTE el nombre propio. Tipo/estado/detalles van en sus campos.
+Reglas tipo: compra+casa→Compra — Casa | compra+departamento/depto→Compra — Departamento | compra+terreno/lote→Compra — Terreno | compra+ph→Compra — PH | venta+casa→Venta — Casa | venta+departamento/depto→Venta — Departamento | venta+terreno/lote→Venta — Terreno | venta+ph→Venta — PH | alquiler temporario/temporal→Alquiler temporario | alquiler/alquilar→Alquiler | tasación/tasar→Tasación | otro→Otro`}]})});
+    if(!r.ok)throw new Error(r.status);const d=await r.json();parsed=JSON.parse((d?.content?.[0]?.text||'').replace(/```json|```/g,'').trim());
+  }catch(e){console.warn('Claude falló:',e.message);}
+  if(parsed){show(parsed);status.textContent='✅ Revisá y guardá';}
+  else{
+    var t2=text.toLowerCase();
+    var tipoSys=/compra.*casa|casa.*compra/i.test(t2)?'Compra — Casa':/compra.*depto|compra.*departamento/i.test(t2)?'Compra — Departamento':/compra.*terreno|compra.*lote/i.test(t2)?'Compra — Terreno':/compra.*ph/i.test(t2)?'Compra — PH':/venta.*casa|casa.*venta/i.test(t2)?'Venta — Casa':/venta.*depto|venta.*departamento/i.test(t2)?'Venta — Departamento':/venta.*terreno|venta.*lote/i.test(t2)?'Venta — Terreno':/venta.*ph/i.test(t2)?'Venta — PH':/alquiler temporario|temporal/i.test(t2)?'Alquiler temporario':/alquiler|alquilar/i.test(t2)?'Alquiler':/tasacion|tasar/i.test(t2)?'Tasación':'';
+    var estCli=/cotiz/i.test(t2)?'cotizando':/presupuesto enviado|mandé/i.test(t2)?'enviado':/cerrado|compró|vendido|firmó/i.test(t2)?'cerrado':/perdido|no quiso|desistió/i.test(t2)?'perdido':'consulta';
+    var nombreCli=text.replace(/\b(quiere|necesita|busca|pide|interesado en|me llamó|me contactó)\b.*/gi,'').replace(/\b(compra|venta|alquiler|alquilar|tasación|casa|departamento|depto|terreno|ph|lote)\b/gi,'').replace(/\b(consulta|cotizando|cotización|presupuesto enviado|cerrado|perdido|está en)\b/gi,'').replace(/\s{2,}/g,' ').trim();
+    if(!nombreCli||nombreCli.length<2)nombreCli=text.split(/\s+/).slice(0,3).join(' ');
+    show({nombre:nombreCli,tipo:tipoSys,estado:estCli});status.textContent='✏️ Completá los campos y guardá';
+  }
+}
+
+async function saveVozCli(){
+  const payload={nombre:document.getElementById('vc-nombre').value.trim(),contacto:document.getElementById('vc-contacto').value.trim(),tipo:document.getElementById('vc-tipo').value,estado:document.getElementById('vc-estado').value,notas:document.getElementById('vc-notas').value.trim()};
+  if(!payload.nombre){alert('Escribí el nombre');return;}setSyncState('loading');
+  const{error}=await db.from('exh_clientes').insert(payload);document.getElementById('modal-voz-cli').style.display='none';
+  if(!error){await loadClientes();toast('Cliente guardado ✓');}else{setSyncState('error');toast('Error al guardar');}
+}
+function clearVozCli(){_vcText='';_vcActive=false;if(_vcRec)try{_vcRec.abort();}catch(e){}var b=document.getElementById('voz-cli-btn');if(b){b.classList.remove('voz-recording');b.textContent='🎤';}document.getElementById('voz-cli-status').textContent='';document.getElementById('voz-cli-transcript').style.display='none';document.getElementById('voz-cli-preview').style.display='none';document.getElementById('voz-cli-clear').style.display='none';}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+async function init(){
+  try{await Promise.all([loadClientes(),loadAdjuntos()]);setSyncState('ok');}catch(e){setSyncState('error');}
+  if(!window._exhLiveSetup){
+    window._exhLiveSetup=true;
+    try{db.channel('leads_live').on('postgres_changes',{event:'INSERT',schema:'public',table:'exh_clientes'},()=>{loadClientes();toast('🔔 Nuevo lead recibido!');}).subscribe(s=>{console.log('Realtime:',s);});}catch(e){console.warn('Realtime no disponible:',e);}
+    setInterval(()=>{if(document.visibilityState==='visible')loadClientes(true);},180000);
+  }
+}
+</script>
+</body>
+</html>
